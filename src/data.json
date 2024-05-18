@@ -1,0 +1,16 @@
+{
+    "Row key": {
+      "Column family 1": {
+        "Column qualifier 1": {"timestamp1": "cell value 1", "timestamp2": "cell value 2"},
+        "Column qualifier 2": {"timestamp1": "cell value 3", "timestamp2": "cell value 4"}
+      },
+      "Column family 2": {
+        "Column qualifier 1": {"timestamp1": "cell value 5", "timestamp2": "cell value 6"},
+        "Column qualifier 2": {"timestamp1": "cell value 7", "timestamp2": "cell value 8"}
+      },
+      "Column family 3": {
+        "Column qualifier 1": {"timestamp1": "cell value 9", "timestamp2": "cell value 10"},
+        "Column qualifier 2": {"timestamp1": "cell value 11", "timestamp2": "cell value 12"}
+      }
+    }
+  }

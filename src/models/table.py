@@ -57,10 +57,18 @@ class Table(BaseModel):
         self.write_to_memory()
 
     def describe(self):
-        """
-        Regresa una descripción de la tabla
-        """
-        return f"Table {self.name} is {'enabled' if self.enabled else 'disabled'}\n{self.name} \n{self.column_families}"
+        """ Retorna una descripción detallada de las columnas de la tabla al estilo de HBase. """
+        status = 'enable' if self.enabled else 'disable'
+        header = f"Table {self.name} is {status}\n{self.name}\nCOLUMN FAMILIES DESCRIPTION"
+        description = []
+
+        for name, props in self.column_families.items():
+            cf_description = f"{{NAME => '{name}', "
+            cf_description += ', '.join([f"{key} => '{value}'" for key, value in props.items()])
+            cf_description += "}"
+            description.append(cf_description)
+
+        return f"{header}\n" + '\n'.join(description)
     
     def alter(self, column_family: str, version: str):
         """

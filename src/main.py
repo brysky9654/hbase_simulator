@@ -53,6 +53,14 @@ def create_table(table_name: str, columns: list[str], printdata:bool) -> None:
     table.write_to_memory()
 
     TABLES.append(table)
+
+
+def valid_string(s: str) -> bool:
+    # si la cadena está limitada por comillas simples
+    if s[0] == "'" and s[-1] == "'":
+        return True
+    
+    return False
     
 
 def main():
@@ -71,43 +79,77 @@ def main():
         if input_command == "exit":
             exit()
 
-        spl = input_command.split()
+        spl = input_command.split(" ")
 
         match spl[0]:
             # --- DDL Functions ---
             case "create":
+                # create ’<table name>’, ’<column family 1>’, ’<column family 2>’, ...
                 print("create")
                 table_n = spl[1]
                 columns = spl[2:]
+
+                if not valid_string(table_n):
+                    print("Invalid table name")
+                    continue
+
+                table_n = table_n.replace("'", "")
+
+                if any([not valid_string(column) for column in columns]):
+                    print("Invalid column family name")
+                    continue
+                    
+                columns = [column.replace("'", "") for column in columns]
+
                 create_table(table_n, columns, True)
                 
             case "list":
+                # list
                 list_tables()
                 
             case "disable":
+                # disable ’<table name>’
                 table_name = spl[1]
                 
-                table = next((table for table in TABLES if table.name == table_name), None)
+                if not valid_string(table_name):
+                    print("Invalid table name")
+                    continue
                 
                 if not table:
                     print(f"{table_name} table not found")
                     continue
-                
+
+                table_name = table_name.replace("'", "")
+                table = next((table for table in TABLES if table.name == table_name), None)
+
                 table.disable()
                 
             case "enable":
+                # enable ’<table name>’
                 table_name = spl[1]
 
-                table = next((table for table in TABLES if table.name == table_name), None)
+                if not valid_string(table_name):
+                    print("Invalid table name")
+                    continue
 
+                table_name = table_name.replace("'", "")
+
+                table = next((table for table in TABLES if table.name == table_name), None)
                 if not table:
                     print(f"{table_name} table not found")
                     continue
-                
+
                 table.enable()
                 
             case "is_disabled":
+                # is_disabled ’<table name>’
                 table_name = spl[1]
+
+                if not valid_string(table_name):
+                    print("Invalid table name")
+                    continue
+
+                table_name = table_name.replace("'", "")
 
                 table = next((table for table in TABLES if table.name == table_name), None)
 
@@ -118,35 +160,66 @@ def main():
                 print(not table.enabled)
                 
             case "alter":
+                # alter ’<table name>’, ’<column family>’, ’<version>’
                 table_name = spl[1]
                 column_family = spl[2]
                 version = spl[3]
                 
-                table = next((table for table in TABLES if table.name == table_name), None)
+                if not valid_string(table_name):
+                    print("Invalid table name")
+                    continue
+
+                if not valid_string(column_family):
+                    print("Invalid column family name")
+                    continue
+
+                if not valid_string(version):
+                    print("Invalid version")
+                    continue
                 
                 if not table:
                     print(f"{table_name} table not found")
                     continue
+
+                table_name = table_name.replace("'", "")
+                column_family = column_family.replace("'", "")
+                version = version.replace("'", "")
+
+                table = next((table for table in TABLES if table.name == table_name), None)
                 
                 table.alter(column_family, version)
                 table.write_to_memory()
                 
             case "drop":
+                # drop ’<table name>’
                 table_name = spl[1]
                 
-                table = next((table for table in TABLES if table.name == table_name), None)
+                if not valid_string(table_name):
+                    print("Invalid table name")
+                    continue
 
                 if not table:
                     print(f"{table_name} table not found")
                     continue
+
+                table_name = table_name.replace("'", "")
+
+                table = next((table for table in TABLES if table.name == table_name), None)
                 
                 table.drop()
                 
             case "drop_all":
+                # drop_all ’<regex>’
                 regex = spl[1]
+                if not valid_string(regex):
+                    print("Invalid regex")
+                    continue
+
+                regex = regex.replace("'", "")
+
                 pattern = re.compile(regex)
+
                 table_names = os.listdir("tables")
-                
                 for table_name in table_names:
                     if pattern.match(table_name):
                         table_path = os.path.join("tables", table_name)
@@ -158,36 +231,69 @@ def main():
                             print(f"{table_name} table(s) dropped")
 
             case "describe":
+                # describe ’<table name>’
                 table_name = spl[1]
-                
-                table = next((table for table in TABLES if table.name == table_name), None)
+
+                if not valid_string(table_name):    
+                    print("Invalid table name")
+                    continue
 
                 if not table:
                     print(f"{table_name} table not found")
                     continue
-                
+
+                table_name = table_name.replace("'", "")
+
+                table = next((table for table in TABLES if table.name == table_name), None)
+
                 print(table.describe())
                 
             # --- DML Functions ---
             case "put":
-                # put table_name row_id column_family:column_q value
+                # put ‘table name’, ’row ’, 'colfamily:colname', ’new value’
                 table_name = spl[1]
                 row_id = spl[2]
                 column = spl[3]
                 value = spl[4]
 
+                if not valid_string(table_name):
+                    print("Invalid table name")
+                    continue
+
+                if not valid_string(row_id):
+                    print("Invalid row id")
+                    continue
+
+                if not valid_string(column):
+                    print("Invalid column")
+                    continue
+
+                if not valid_string(value):
+                    try:
+                        value = int(value)
+                    except:
+                        print("Invalid value")
+                        continue
+
                 column_family = column.split(":")[0]
                 column_q = column.split(":")[1]
 
+                    
+                table_name = table_name.replace("'", "")
+                row_id = row_id.replace("'", "")
+                column_family = column_family.replace("'", "")
+                column_q = column_q.replace("'", "")
+                value = value.replace("'", "")
+
                 table = next((table for table in TABLES if table.name == table_name), None)
-                
-                if not table:
-                    print(f"{table_name} table not found")
-                    continue
 
                 if column_family not in table.column_families:  
                     print("Column family not found")
                     break
+                
+                if not table:
+                    print(f"{table_name} table not found")
+                    continue
 
                 hf = HFile(table=table.name)
                 hf.put(row_id, column_family, column_q, value)
@@ -204,7 +310,16 @@ def main():
                 table_name = spl[1]
                 row_id = spl[2]
 
-                print("spl", spl)
+                if not valid_string(table_name):
+                    print("Invalid table name")
+                    continue
+
+                if not valid_string(row_id):
+                    print("Invalid row id")
+                    continue
+
+                table_name = table_name.replace("'", "")
+                row_id = row_id.replace("'", "")
                 
                 if len(spl) > 3:
                     """
@@ -212,11 +327,15 @@ def main():
                     personal_data:pet                   timestamp=123456789, value=dog
                     """
                     #spl ['get', 'tabla4', '1', '{COLUMN', '=>', 'fam:cq}']
-                    # get ’<table name>’, ’row id’, ’{COLUMN => column family:column qualifier}’
+                    # get ’<table name>’, ’row id’, {COLUMN => 'cfamily:columnq'}
 
                     if spl[3] == "{COLUMN":
-                        column_f = spl[5].split(":")[0]
-                        column_q = spl[5].split(":")[1]
+                        if not valid_string(spl[5][:-1]):
+                            print("Invalid column")
+                            continue
+                        
+                        column_f = spl[5].split(":")[0].replace("'", "")
+                        column_q = spl[5].split(":")[1].replace("'", "")
                         column_q = column_q[:-1]  # Eliminar el último caracter que es el '}'
 
                     else:
@@ -258,12 +377,20 @@ def main():
                 del hf
                 
             case "scan":
+                # scan ’<table name>’
                 table_name = spl[1]
-                table = next((table for table in TABLES if table.name == table_name), None)
 
                 if not table:
                     print(f"{table_name} table not found")
                     continue
+
+                if not valid_string(table_name):
+                    print("Invalid table name")
+                    continue
+
+                table_name = table_name.replace("'", "")
+
+                table = next((table for table in TABLES if table.name == table_name), None)
                 
                 hf = HFile(table=table.name)
                 rows = hf.scan()
@@ -282,16 +409,41 @@ def main():
                 del hf
                 
             case "delete":
+                # delete ’<table name>’, ’row id’, ’column family:column qualifier’, timestamp
                 tableName = spl[1]
                 rowId = spl[2]
                 column = spl[3]
                 timestamp = spl[4]
                 
+                
+                if not table:
+                    print(f"{tableName} table not found")
+                    continue
+
+                if not valid_string(tableName):
+                    print("Invalid table name")
+                    continue
+
+                if not valid_string(rowId):
+                    print("Invalid row id")
+                    continue
+
+                if not valid_string(column):
+                    print("Invalid column")
+                    continue
+
+
                 columnFamily = column.split(":")[0]
                 columnQualifier = column.split(":")[1]
+
+
+                tableName = tableName.replace("'", "")
+                rowId = rowId.replace("'", "")
+                columnFamily = columnFamily.replace("'", "")
+                columnQualifier = columnQualifier.replace("'", "")
                 
                 table = next((table for table in TABLES if table.name == tableName), None)
-                
+
                 if not table:
                     print(f"{tableName} table not found")
                     continue
@@ -304,14 +456,26 @@ def main():
                 del hf
             
             case "delete_all":
+                # delete_all ’<table name>’, ’row id’
                 tableName = spl[1]
                 rowId = spl[2]
-
-                table = next((table for table in TABLES if table.name == tableName), None)
 
                 if not table:
                     print(f"{tableName} table not found")
                     continue
+
+                if not valid_string(tableName):
+                    print("Invalid table name")
+                    continue
+
+                if not valid_string(rowId):
+                    print("Invalid row id")
+                    continue
+
+                tableName = tableName.replace("'", "")
+                rowId = rowId.replace("'", "")
+                table = next((table for table in TABLES if table.name == tableName), None)
+
 
                 hf = HFile(table=table.name)
 
@@ -321,8 +485,16 @@ def main():
                 del hf
             
             case "count":
+                # count ’<table name>’
                 tableName = spl[1]
+
+                if not valid_string(tableName):
+                    print("Invalid table name")
+                    continue
+
+                tableName = tableName.replace("'", "")
                 table = next((table for table in TABLES if table.name == tableName), None)
+
                 if table:
                     dataPath = os.path.join("tables", tableName, "regions", "region1", "hfile.json")
                     if os.path.exists(dataPath):
@@ -341,6 +513,12 @@ def main():
             case "truncate":
                 # truncate ’<table name>’
                 tableName = spl[1]
+
+                if not valid_string(tableName):
+                    print("Invalid table name")
+                    continue
+
+                tableName = tableName.replace("'", "")
                 table = next((table for table in TABLES if table.name == tableName), None)
 
                 fams = list(table.column_families.keys())

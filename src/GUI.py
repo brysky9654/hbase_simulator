@@ -2,28 +2,6 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, Text
 from collections import Counter
 
-archivo_actual = ''  #ruta del archivo actual
-modo_actual = 'Editor'  #modo actual
-
-
-# Función para abrir un archivo
-def abrir_archivo():
-    global archivo_actual
-    path = filedialog.askopenfilename()
-    if path:
-        archivo_actual = path
-        texto.delete(1.0, tk.END)
-        with open(path, 'r') as archivo:
-            codigo = archivo.read()
-            texto.insert(tk.END, codigo)
-        root.title(f"{modo_actual} - {path}")
-        actualizar_lineas()
-
-def leer_secuencia_desde_archivo(path):
-    with open(path, 'r') as archivo:
-        secuencia = archivo.read()
-    return secuencia
-
 
 # Función para resetear el editor
 def reset_editor():
@@ -36,9 +14,10 @@ def ejecutar_codigo():
     code = texto.get(1.0, tk.END)  
     terminal.delete(1.0, tk.END)  
 
-    match modo_actual:
-        case 'Editor':
-            terminal.insert(tk.END, code)                      
+    try:
+        terminal.insert(tk.END, code)  
+    except Exception as e:
+        messagebox.showerror("Error", e)                    
 
 # Función para actualizar los números de línea
 def actualizar_lineas(event=None):
@@ -61,16 +40,9 @@ root.title("Editor")
 modo_frame = tk.Frame(root)
 modo_frame.grid(row=0, column=0, columnspan=2, sticky="ew")
 
-boton_editor = tk.Button(modo_frame, width=8, text="Editor", fg='blue', command=lambda: cambiar_modo('Editor'))
-boton_editor.pack(side="left")
-
 # Botones para las funcionalidades deben estar en fila
 botones_frame = tk.Frame(root)
 botones_frame.grid(row=1, column=0, columnspan=2, sticky="ew")
-
-# Botón para abrir un archivo
-boton_abrir = tk.Button(botones_frame, text="Abrir", command=abrir_archivo)
-boton_abrir.pack(side="left")
 
 # Botón para resetear el editor
 boton_reset = tk.Button(botones_frame, text="Reset", command=reset_editor)
@@ -82,9 +54,6 @@ boton_ejecutar.pack(side="left")
 
 editor_frame = tk.Frame(root)
 editor_frame.grid(row=2, column=0, sticky="nsew")
-
-secuencia_frame = tk.Frame(root)
-secuencia_frame.grid(row=2, column=1, sticky="nsew")
 
 # Configuración del frame del editor y los números de línea
 lineas_frame = tk.Frame(editor_frame)
@@ -103,10 +72,6 @@ scrollbar.config(command=texto.yview)
 texto.bind("<KeyRelease>", actualizar_lineas)
 texto.bind("<MouseWheel>", actualizar_lineas)
 
-secuencia_texto = Text(secuencia_frame, bg="gray", fg="white")
-secuencia_texto.pack(fill="both", expand=True)
-
-secuencia_texto.bind("<KeyRelease>", actualizar_lineas)
 
 # Configuración del frame de la terminal
 terminal_frame = tk.Frame(root, height=100)

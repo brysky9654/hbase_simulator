@@ -1,6 +1,8 @@
-from models.table import Table
+from models.table import Table, HFile
+import shutil
 import json
 import os
+import re
 
 TABLES = []
 
@@ -40,6 +42,7 @@ def list_tables():
 
 
 def create_table(table_name: str, columns: list[str]) -> None:
+    global TABLES
     print(f"Creando tabla {table_name} con columnas {columns}")
 
     table = Table(name=table_name, column_families={column: {"version": "1"} for column in columns})
@@ -48,6 +51,9 @@ def create_table(table_name: str, columns: list[str]) -> None:
         print(k,v)
 
     table.write_to_memory()
+
+    TABLES.append(table)
+    
 
 def main():
     global TABLES
@@ -60,7 +66,7 @@ def main():
     input_command = ""
 
     while input_command != "exit":
-        input_command = input("->")
+        input_command = input("-> ")
 
         if input_command == "exit":
             exit()
@@ -68,34 +74,111 @@ def main():
         spl = input_command.split()
 
         match spl[0]:
+            # --- DDL Functions ---
             case "create":
                 print("create")
                 table_n = spl[1]
                 columns = spl[2:]
                 create_table(table_n, columns)
+                
             case "list":
                 list_tables()
-
+                
             case "disable":
                 table_name = spl[1]
                 table = next((table for table in TABLES if table.name == table_name), None)
                 table.disable()
-
+                
             case "enable":
                 table_name = spl[1]
                 table = next((table for table in TABLES if table.name == table_name), None)
                 table.enable()
-            
+                
             case "is_disabled":
                 table_name = spl[1]
                 table = next((table for table in TABLES if table.name == table_name), None)
                 print(not table.enabled)
+                
+            case "alter":
+                table_name = spl[1]
+                column_family = spl[2]
+                version = spl[3]
+                table = next((table for table in TABLES if table.name == table_name), None)
+                
+                table.alter(column_family, version)
+                table.write_to_memory()
+                
+            case "drop":
+                table_name = spl[1]
+                table = next((table for table in TABLES if table.name == table_name), None)
+                table.drop()
+                
+            case "drop_all":
+                regex = spl[1]
+                pattern = re.compile(regex)
+                table_names = os.listdir("tables")
+                
+                for table_name in table_names:
+                    if pattern.match(table_name):
+                        table_path = os.path.join("tables", table_name)
+                        if os.path.isdir(table_path): 
+                            shutil.rmtree(table_path)
+                            print(f"{table_name} table(s) dropped")
+                        else:
+                            os.remove(table_path)
+                            print(f"{table_name} table(s) dropped")
 
             case "describe":
                 table_name = spl[1]
                 table = next((table for table in TABLES if table.name == table_name), None)
                 print(table.describe())
+                
+            # --- DML Functions ---
+            case "put":
+                # put table_name row_id column_family:column_q value
+                table_name = spl[1]
+                row_id = spl[2]
+                column = spl[3]
+                value = spl[4]
 
+                column_family = column.split(":")[0]
+                column_q = column.split(":")[1]
+
+                table = next((table for table in TABLES if table.name == table_name), None)
+
+                if column_family not in table.column_families:  
+                    print("Column family not found")
+                    break
+
+                hf = HFile(table=table.name)
+                hf.put(row_id, column_family, column_q, value)
+
+            case "get":
+                # get ’<table name>’, ’row id’
+                table_name = spl[1]
+                row_id = spl[2]
+                
+
+                pass
+                
+            case "scan":
+                table_name = spl[1]
+                table = next((table for table in TABLES if table.name == table_name), None)
+                
+                hf = HFile(table=table.name)
+                print(hf.scan())
+            case "delete":
+                pass
+            
+            case "delete_all":
+                pass
+            
+            case "count":
+                pass
+            
+            case "truncate":
+                pass
+            
             case _:
                 print("Comando no reconocido")
 

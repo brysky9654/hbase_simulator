@@ -1,6 +1,7 @@
 from pydantic import BaseModel
 import os
 import json
+import time
 
 class Table(BaseModel):
     """"
@@ -60,5 +61,78 @@ class Table(BaseModel):
         """
         self.column_families[column_family]['version'] = version
 
+    def drop(self):
+        """
+        Drop the table
+        """
+        os.remove(f"tables/{self.name}/config.json")
+        os.rmdir(f"tables/{self.name}")
+
+class HFile(BaseModel):
+    table: str
+    region: str = "region1"
+    rows: dict[int, dict[str, dict[str, dict[str, str]]]] = {}
+
+    """
+    rows = 
+    {
+        "1": {
+            "column_fam_1": {
+                "column_qualifier": {
+                    "timestamp": "1",
+                }
+            },
+            "column_fam_2": {
+                "column_qualifier": {
+                    "timestamp": "1",
+                }
+            }
+        },
+    }
+    """
+
+    def __init__(self, table: str, region: str = "region1"):
+        super().__init__(table=table, region=region)
+
+        self.table = table
+        self.region = region
         
+        path = f"tables/{self.table}/regions/{self.region}"
+
+        # check if hfile.json exists
+        if os.path.exists(f"{path}/hfile.json"):
+            print("hfile.json exists")
+            with open(f"{path}/hfile.json", "r") as f:
+                self.rows = json.load(f)
+        else:
+            self.rows = {}
+            # create hfie.json
+            with open(f"{path}/hfile.json", "w") as f:
+                json.dump(self.rows, f)
+
+    def write_to_memory(self):
+        path = f"tables/{self.table}/regions/{self.region}"
+        with open(f"{path}/hfile.json", "w") as f:
+            json.dump(self.rows, f)
+
+    def put(self, row: int, column_family: str, column_qualifier: str, value: str):
+        ts = str(int(time.time()))
+        if row not in self.rows:
+            self.rows[row] = {}
+        if column_family not in self.rows[row]:
+            self.rows[row][column_family] = {}
+        if column_qualifier not in self.rows[row][column_family]:
+            self.rows[row][column_family][column_qualifier] = {}
+        self.rows[row][column_family][column_qualifier][ts] = value
+        self.write_to_memory()
+
+    def get(self, row: int, column_family: str, column_qualifier: str, timestamp: str):
+        return self.rows[row][column_family][column_qualifier][timestamp]
     
+    def delete(self, row: int, column_family: str, column_qualifier: str):
+        del self.rows[row][column_family][column_qualifier]
+        self.write_to_memory()
+
+    def scan(self):
+        return self.rows
+

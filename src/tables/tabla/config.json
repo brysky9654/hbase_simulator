@@ -1,1 +1,1 @@
-{"enabled": true, "name": "tabla", "column_families": {"c1": {"version": "1"}, "c2": {"version": "1"}}}
+{"enabled": true, "name": "tabla", "column_families": {"col1": {"version": "1"}, "col2": {"version": "1"}}}

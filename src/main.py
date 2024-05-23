@@ -4,6 +4,7 @@ import json
 import os
 import re
 import pandas as pd
+import time as t
 
 TABLES = []
 
@@ -42,14 +43,12 @@ def list_tables():
         print(table)
 
 
-def create_table(table_name: str, columns: list[str]) -> None:
+def create_table(table_name: str, columns: list[str], printdata:bool) -> None:
     global TABLES
-    print(f"Creando tabla {table_name} con columnas {columns}")
-
     table = Table(name=table_name, column_families={column: {"version": "1"} for column in columns})
 
-    for k,v in table.column_families.items():
-        print(k,v)
+    if printdata:
+        print(f"=> Hbase:: Table - {table_name}")
 
     table.write_to_memory()
 
@@ -80,38 +79,67 @@ def main():
                 print("create")
                 table_n = spl[1]
                 columns = spl[2:]
-                create_table(table_n, columns)
+                create_table(table_n, columns, True)
                 
             case "list":
                 list_tables()
                 
             case "disable":
                 table_name = spl[1]
+                
                 table = next((table for table in TABLES if table.name == table_name), None)
+                
+                if not table:
+                    print(f"{table_name} table not found")
+                    continue
+                
                 table.disable()
                 
             case "enable":
                 table_name = spl[1]
+
                 table = next((table for table in TABLES if table.name == table_name), None)
+
+                if not table:
+                    print(f"{table_name} table not found")
+                    continue
+                
                 table.enable()
                 
             case "is_disabled":
                 table_name = spl[1]
+
                 table = next((table for table in TABLES if table.name == table_name), None)
+
+                if not table:
+                    print(f"{table_name} table not found")
+                    continue
+                
                 print(not table.enabled)
                 
             case "alter":
                 table_name = spl[1]
                 column_family = spl[2]
                 version = spl[3]
+                
                 table = next((table for table in TABLES if table.name == table_name), None)
+                
+                if not table:
+                    print(f"{table_name} table not found")
+                    continue
                 
                 table.alter(column_family, version)
                 table.write_to_memory()
                 
             case "drop":
                 table_name = spl[1]
+                
                 table = next((table for table in TABLES if table.name == table_name), None)
+
+                if not table:
+                    print(f"{table_name} table not found")
+                    continue
+                
                 table.drop()
                 
             case "drop_all":
@@ -131,7 +159,13 @@ def main():
 
             case "describe":
                 table_name = spl[1]
+                
                 table = next((table for table in TABLES if table.name == table_name), None)
+
+                if not table:
+                    print(f"{table_name} table not found")
+                    continue
+                
                 print(table.describe())
                 
             # --- DML Functions ---
@@ -146,6 +180,10 @@ def main():
                 column_q = column.split(":")[1]
 
                 table = next((table for table in TABLES if table.name == table_name), None)
+                
+                if not table:
+                    print(f"{table_name} table not found")
+                    continue
 
                 if column_family not in table.column_families:  
                     print("Column family not found")
@@ -153,6 +191,8 @@ def main():
 
                 hf = HFile(table=table.name)
                 hf.put(row_id, column_family, column_q, value)
+
+                del hf
 
             case "get":
                 # get ’<table name>’, ’row id’
@@ -193,14 +233,15 @@ def main():
                     hf = HFile(table=table.name)
                     row_data = hf.get(row_id)
                     
-                    print(f"COLUMN\t\t\t\tCELL")
+                    print(f"{'COLUMN'.ljust(40)} CELL")
                     
                     if column_f is None and column_q is None:
                         for column_family, columns in row_data.items():
                             for column, value in columns.items():
                                 keys = list(value.keys())
                                 first = max(keys)
-                                print(f"{column_family}:{column}\t\t\t\ttimestamp={first},value={value[first]}")
+                                s = f"{column_family}:{column}"
+                                print(f"{s.ljust(40)} timestamp={first},value={value[first]}")
 
                     else:
                         for column_family, columns in row_data.items():
@@ -208,16 +249,37 @@ def main():
                                 if column_f == column_family and column_q == column:
                                     keys = list(value.keys())
                                     first = max(keys)
-                                    print(f"{column_family}:{column}\t\t\t\ttimestamp={first},value={value[first]}")
+                                    s = f"{column_family}:{column}"
+                                    print(f"{s.ljust(40)} timestamp={first},value={value[first]}")
                 else:
                     print("Table not found")
+                    continue
+
+                del hf
                 
             case "scan":
                 table_name = spl[1]
                 table = next((table for table in TABLES if table.name == table_name), None)
+
+                if not table:
+                    print(f"{table_name} table not found")
+                    continue
                 
                 hf = HFile(table=table.name)
-                print(hf.scan())
+                rows = hf.scan()
+                """
+                ROW                              COLUMN+CELL
+                1                                column=column_fam:column_qualifier, timestamp=123456789, value=value
+                """
+                print(f"{'ROW'.ljust(40)} COLUMN+CELL")
+                for row, columns in rows.items():
+                    for column_family, columns in columns.items():
+                        for column, value in columns.items():
+                            keys = list(value.keys())
+                            first = max(keys)
+                            s = f"{row}"
+                            print(f"{s.ljust(40)} column={column_family}:{column}, timestamp={first}, value={value[first]}")
+                del hf
                 
             case "delete":
                 tableName = spl[1]
@@ -232,32 +294,31 @@ def main():
                 
                 if not table:
                     print(f"{tableName} table not found")
+                    continue
                 
                 hf = HFile(table=table.name)
                 
                 if rowId in hf.rows and columnFamily in hf.rows[rowId] and columnQualifier in hf.rows[rowId][columnFamily]:
                     if timestamp in hf.rows[rowId][columnFamily][columnQualifier]:
-                        del hf.rows[rowId][columnFamily][columnQualifier][timestamp]
-                        hf.write_to_memory()
-                        print(f"Deleted {columnFamily}:{columnQualifier} from row {rowId}")
-                    else:
-                        print(f"Timestamp {timestamp} not found in {rowId}, {columnFamily}:{columnQualifier}")
-                else:
-                    print(f"Row {rowId} or {columnFamily}:{columnQualifier} not found")
-                
-                if not hf.rows[rowId][columnFamily][columnQualifier]:
-                    del hf.rows[rowId][columnFamily][columnQualifier]
-                
-                if not hf.rows[rowId][columnFamily]:
-                    del hf.rows[rowId][columnFamily]
-                
-                if not hf.rows[rowId]:
-                    del hf.rows[rowId]
-                    
-                hf.write_to_memory()
+                        hf.delete(rowId, columnFamily, columnQualifier, timestamp)
+                del hf
             
             case "delete_all":
-                pass
+                tableName = spl[1]
+                rowId = spl[2]
+
+                table = next((table for table in TABLES if table.name == tableName), None)
+
+                if not table:
+                    print(f"{tableName} table not found")
+                    continue
+
+                hf = HFile(table=table.name)
+
+                if rowId in hf.rows:
+                    hf.delete_all(rowId)
+                
+                del hf
             
             case "count":
                 tableName = spl[1]
@@ -278,7 +339,18 @@ def main():
                     print(f"{tableName} table not found.")
             
             case "truncate":
-                pass
+                # truncate ’<table name>’
+                tableName = spl[1]
+                table = next((table for table in TABLES if table.name == tableName), None)
+
+                fams = list(table.column_families.keys())
+                print(f"Truncating '{tableName}' table (it may take a while):")
+                print("- Disabling table...")
+                table.disable() # Disable table
+                t.sleep(40)
+                table.drop() #drop table
+                print("- Truncating table...")
+                create_table(tableName, fams, False) #create table
             
             case _:
                 print("Unrecognized command")

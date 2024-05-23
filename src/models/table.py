@@ -2,8 +2,16 @@ from pydantic import BaseModel
 import os
 import json
 import time
+import shutil
 
 class Table(BaseModel):
+    """
+    Clase que guarda las configuraciones de una tabla
+    """
+    enabled: bool = True
+    name : str
+    column_families: dict[str, dict[str, str]]
+
     """"
     enabled: true,
     "name": "table1",
@@ -13,11 +21,10 @@ class Table(BaseModel):
             ...
         },
     """
-    enabled: bool = True
-    name : str
-    column_families: dict[str, dict[str, str]]
-
     def write_to_memory(self):
+        """
+        Guarda el contenido de la tabla en un archivo config.json
+        """
         # if not exists create folder table/{self.name}
         
         if not os.path.exists(f"tables/{self.name}"):
@@ -37,38 +44,40 @@ class Table(BaseModel):
     #funciones de la clase
     def disable(self):
         """
-        Disable the table
+        Deshabilitar la tabla
         """
         self.enabled = False
         self.write_to_memory()
 
     def enable(self):
         """
-        Enable the table
+        Habilitar la tabla
         """
         self.enabled = True
         self.write_to_memory()
 
     def describe(self):
         """
-        Return a string with the table description
+        Regresa una descripción de la tabla
         """
         return f"Table {self.name} is {'enabled' if self.enabled else 'disabled'}\n{self.name} \n{self.column_families}"
     
     def alter(self, column_family: str, version: str):
         """
-        Alter the version of a column family
+        Alterar la tabla para cambiar la versión de un column family
         """
         self.column_families[column_family]['version'] = version
 
     def drop(self):
         """
-        Drop the table
+        Hace un drop de la tabla
         """
-        os.remove(f"tables/{self.name}/config.json")
-        os.rmdir(f"tables/{self.name}")
+        shutil.rmtree(f"tables/{self.name}")
 
 class HFile(BaseModel):
+    """
+    Clase que simula un archivo HFile
+    """
     table: str
     region: str = "region1"
     rows: dict[int, dict[str, dict[str, dict[str, str]]]] = {}
@@ -92,6 +101,11 @@ class HFile(BaseModel):
     """
 
     def __init__(self, table: str, region: str = "region1"):
+        """
+        Inicializa la clase
+        :param table: Nombre de la tabla
+        :param region: Nombre de la región
+        """
         super().__init__(table=table, region=region)
 
         self.table = table
@@ -111,11 +125,21 @@ class HFile(BaseModel):
                 json.dump(self.rows, f)
 
     def write_to_memory(self):
+        """
+        Guarda el contenido de la tabla en un archivo hfile.json
+        """
         path = f"tables/{self.table}/regions/{self.region}"
         with open(f"{path}/hfile.json", "w") as f:
             json.dump(self.rows, f)
 
     def put(self, row: int, column_family: str, column_qualifier: str, value: str):
+        """
+        Inserta un valor en la tabla
+        :param row: Identificador de la fila
+        :param column_family: Nombre de la familia de columnas
+        :param column_qualifier: Nombre de la columna
+        :param value: Valor a insertar
+        """
         ts = str(int(time.time()))
         if row not in self.rows:
             self.rows[row] = {}
@@ -126,13 +150,44 @@ class HFile(BaseModel):
         self.rows[row][column_family][column_qualifier][ts] = value
         self.write_to_memory()
 
-    def get(self, row: int):
+    def get(self, row: int) -> dict[str, dict[str, dict[str, str]]]:
+        """
+        Obtiene una fila de la tabla
+        :param row: Identificador de la fila
+        :return: Diccionario con la fila
+        """
+
         return self.rows[row]
     
-    def delete(self, row: int, column_family: str, column_qualifier: str):
-        del self.rows[row][column_family][column_qualifier]
+    def delete(self, row: int, column_family: str, column_qualifier: str, timestamp: str):
+        """
+        Elimina un valor de la tabla
+        :param row: Identificador de la fila
+        :param column_family: Nombre de la familia de columnas
+        :param column_qualifier: Nombre de la columna
+        :param timestamp: Timestamp del valor a eliminar
+        """
+        del self.rows[row][column_family][column_qualifier][timestamp]
         self.write_to_memory()
 
-    def scan(self):
-        return self.rows
+    def delete_all(self, row: int):
+        """
+        Elimina una fila de la tabla
+        :param row: Identificador de la fila
+        """
+        del self.rows[row]
+        self.write_to_memory()
 
+    def scan(self) -> dict[int, dict[str, dict[str, dict[str, str]]]]:
+        """
+        Escanea la tabla
+        :return: Diccionario con las filas de la tabla
+        """
+        return self.rows
+    
+    def truncate(self):
+        """
+        Elimina todas las filas de la tabla
+        """
+        self.rows = {}
+        self.write_to_memory()

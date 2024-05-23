@@ -129,6 +129,8 @@ class HFile(BaseModel):
         Guarda el contenido de la tabla en un archivo hfile.json
         """
         path = f"tables/{self.table}/regions/{self.region}"
+        # order rows by row number
+        self.rows = dict(sorted(self.rows.items()))
         with open(f"{path}/hfile.json", "w") as f:
             json.dump(self.rows, f)
 

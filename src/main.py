@@ -66,7 +66,7 @@ def main():
     input_command = ""
 
     while input_command != "exit":
-        input_command = input("-> ")
+        input_command = input("habase(main)> ")
 
         if input_command == "exit":
             exit()

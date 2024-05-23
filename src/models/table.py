@@ -126,8 +126,8 @@ class HFile(BaseModel):
         self.rows[row][column_family][column_qualifier][ts] = value
         self.write_to_memory()
 
-    def get(self, row: int, column_family: str, column_qualifier: str, timestamp: str):
-        return self.rows[row][column_family][column_qualifier][timestamp]
+    def get(self, row: int):
+        return self.rows[row]
     
     def delete(self, row: int, column_family: str, column_qualifier: str):
         del self.rows[row][column_family][column_qualifier]

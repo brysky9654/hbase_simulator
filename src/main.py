@@ -3,6 +3,7 @@ import shutil
 import json
 import os
 import re
+import pandas as pd
 
 TABLES = []
 
@@ -155,11 +156,61 @@ def main():
 
             case "get":
                 # get ’<table name>’, ’row id’
+                """
+                COLUMN                        CELL
+                details:name                  timestamp=123456789, value=John
+                details:age                   timestamp=123456789, value=30
+                """
                 table_name = spl[1]
                 row_id = spl[2]
-                
 
-                pass
+                print("spl", spl)
+                
+                if len(spl) > 3:
+                    """
+                    COLUMN                              CELL
+                    personal_data:pet                   timestamp=123456789, value=dog
+                    """
+                    #spl ['get', 'tabla4', '1', '{COLUMN', '=>', 'fam:cq}']
+                    # get ’<table name>’, ’row id’, ’{COLUMN => column family:column qualifier}’
+
+                    if spl[3] == "{COLUMN":
+                        column_f = spl[5].split(":")[0]
+                        column_q = spl[5].split(":")[1]
+                        column_q = column_q[:-1]  # Eliminar el último caracter que es el '}'
+
+                    else:
+                        print("Invalid command")
+
+                else:
+                    # get ’<table name>’, ’row id’
+                    column_f = None
+                    column_q = None
+
+                table = next((table for table in TABLES if table.name == table_name), None)
+                
+                if table is not None:
+                    hf = HFile(table=table.name)
+                    row_data = hf.get(row_id)
+                    
+                    print(f"COLUMN\t\t\t\tCELL")
+                    
+                    if column_f is None and column_q is None:
+                        for column_family, columns in row_data.items():
+                            for column, value in columns.items():
+                                keys = list(value.keys())
+                                first = max(keys)
+                                print(f"{column_family}:{column}\t\t\t\ttimestamp={first},value={value[first]}")
+
+                    else:
+                        for column_family, columns in row_data.items():
+                            for column, value in columns.items():
+                                if column_f == column_family and column_q == column:
+                                    keys = list(value.keys())
+                                    first = max(keys)
+                                    print(f"{column_family}:{column}\t\t\t\ttimestamp={first},value={value[first]}")
+                else:
+                    print("Table not found")
                 
             case "scan":
                 table_name = spl[1]
@@ -167,20 +218,70 @@ def main():
                 
                 hf = HFile(table=table.name)
                 print(hf.scan())
+                
             case "delete":
-                pass
+                tableName = spl[1]
+                rowId = spl[2]
+                column = spl[3]
+                timestamp = spl[4]
+                
+                columnFamily = column.split(":")[0]
+                columnQualifier = column.split(":")[1]
+                
+                table = next((table for table in TABLES if table.name == tableName), None)
+                
+                if not table:
+                    print(f"{tableName} table not found")
+                
+                hf = HFile(table=table.name)
+                
+                if rowId in hf.rows and columnFamily in hf.rows[rowId] and columnQualifier in hf.rows[rowId][columnFamily]:
+                    if timestamp in hf.rows[rowId][columnFamily][columnQualifier]:
+                        del hf.rows[rowId][columnFamily][columnQualifier][timestamp]
+                        hf.write_to_memory()
+                        print(f"Deleted {columnFamily}:{columnQualifier} from row {rowId}")
+                    else:
+                        print(f"Timestamp {timestamp} not found in {rowId}, {columnFamily}:{columnQualifier}")
+                else:
+                    print(f"Row {rowId} or {columnFamily}:{columnQualifier} not found")
+                
+                if not hf.rows[rowId][columnFamily][columnQualifier]:
+                    del hf.rows[rowId][columnFamily][columnQualifier]
+                
+                if not hf.rows[rowId][columnFamily]:
+                    del hf.rows[rowId][columnFamily]
+                
+                if not hf.rows[rowId]:
+                    del hf.rows[rowId]
+                    
+                hf.write_to_memory()
             
             case "delete_all":
                 pass
             
             case "count":
-                pass
+                tableName = spl[1]
+                table = next((table for table in TABLES if table.name == tableName), None)
+                if table:
+                    dataPath = os.path.join("tables", tableName, "regions", "region1", "hfile.json")
+                    if os.path.exists(dataPath):
+                        with open(dataPath, "r") as f:
+                            data = json.load(f)
+                            if data:
+                                rowsN = len(data)
+                                print(f"{rowsN} row(s) found in table {tableName}.")
+                            else:
+                                print("Table is empty.")
+                    else:
+                        print(f"No data found for {tableName} table.")
+                else:
+                    print(f"{tableName} table not found.")
             
             case "truncate":
                 pass
             
             case _:
-                print("Comando no reconocido")
+                print("Unrecognized command")
 
 
 if __name__ == "__main__":

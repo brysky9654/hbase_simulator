@@ -186,7 +186,12 @@ def main():
 
                 table = next((table for table in TABLES if table.name == table_name), None)
                 
-                table.alter(column_family, version)
+                if not table.enabled:
+                    print(f"ERROR: Table {table_name} is enabled. Disable it first.")
+                    continue
+                else:
+                    table.alter(column_family, version)
+                    
                 table.write_to_memory()
                 
             case "drop":
@@ -205,7 +210,12 @@ def main():
 
                 table = next((table for table in TABLES if table.name == table_name), None)
                 
-                table.drop()
+                if table.enabled:
+                    print(f"ERROR: Table {table_name} is enabled. Disable it first.")
+                    continue
+                else:
+                    table.drop()
+
                 
             case "drop_all":
                 # drop_all ’<regex>’
@@ -303,7 +313,12 @@ def main():
                     continue
 
                 hf = HFile(table=table.name)
-                hf.put(row_id, column_family, column_q, value)
+
+                if not table.enabled:
+                    print(f"ERROR: Table {table_name} is enabled. Disable it first.")
+                    continue
+                else:
+                    hf.put(row_id, column_family, column_q, value)
 
                 del hf
 

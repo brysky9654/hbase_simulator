@@ -1,30 +1,39 @@
 import tkinter as tk
 from tkinter import Text
+import subprocess
 
-def ejecutar_codigo(event=None):
-    code = terminal.get("insert linestart", "insert lineend")
-    code = code.replace("[cloudera@quickstart]", "")
-    terminal.insert(tk.END, f"\n{code}") #reemplazar por las funciones
+def executeCode(event=None):
+    code = terminal.get("insert linestart", "insert lineend").strip()
+    if code:
+        terminal.insert(tk.END, f"\n{code}\n")
+        resultado = executeCommand(code)
+        terminal.insert(tk.END, resultado)
 
     terminal.insert(tk.END, "\n[cloudera@quickstart] ")
-    # Mover el cursor justo después del prompt
     terminal.mark_set("insert", "end-1c lineend")
-    return 'break'  # Prevenir que la tecla Enter genere una nueva línea automáticamente
+    return 'break'
+
+def executeCommand(comando):
+    try:
+        resultado = subprocess.run(comando, shell=True, capture_output=True, text=True)
+        return resultado.stdout + resultado.stderr
+    except Exception as e:
+        return str(e)
 
 root = tk.Tk()
-root.title("Terminal Cloudera")
+root.title("HBase Simulator")
 
-# Configuración del frame de la terminal
+# config
 terminal_frame = tk.Frame(root, height=100)
 terminal_frame.pack(fill="both", expand=True)
 
-terminal = Text(terminal_frame, bg="black", fg="white")
+terminal = Text(terminal_frame, bg="black", fg="white", insertbackground="white")
 terminal.pack(fill="both", expand=True)
 
-# Insertar el prompt inicial
+# insert the prompt
 terminal.insert(tk.END, "[cloudera@quickstart] ")
 
-# Enlazar la tecla Enter a la función ejecutar_codigo
-terminal.bind("<Return>", ejecutar_codigo)
+# execute the command when the Enter key is pressed
+terminal.bind("<Return>", executeCode)
 
 root.mainloop()

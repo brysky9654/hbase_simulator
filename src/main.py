@@ -595,8 +595,55 @@ def main():
                 del hf
 
             case "update_many":
-                # update_many "employees" '{"row1": {"column1": "new_value1", "column2": "new_value2"}, "row2": {"column1": "new_value3"}}'
-                pass    
+                # update_many 'table name' 'cf:cq' value '1'  '2'  '3'
+                tableName = spl[1]
+                column = spl[2]
+                value = spl[3]
+                rows = spl[4:]
+
+                if not valid_string(tableName):
+                    print("Invalid table name")
+                    continue
+
+                if not valid_string(column):
+                    print("Invalid column")
+                    continue
+                
+                if not valid_string(value):
+                    if value.isdigit():
+                        value = int(value)
+                    elif value.find(".") != -1:
+                        try:
+                            value = float(value)
+                        except:
+                            value = value
+                else:
+                    value = value.replace("'", "")
+
+                for r in rows:
+                    if not valid_string(r):
+                        print("Invalid row")
+                        continue
+
+                tableName = tableName.replace("'", "")
+                column = column.replace("'", "")
+                column_family = column.split(":")[0]
+                column_q = column.split(":")[1]
+                rows = [r.replace("'", "") for r in rows]
+                
+
+                table = next((table for table in TABLES if table.name == tableName), None)
+
+                if not table:
+                    print(f"{tableName} table not found")
+                    continue
+
+                hf = HFile(table=table.name)
+
+                for row in rows:
+                    hf.put(row, column_family, column_q, value)
+
+                del hf
             
             case _:
                 print("Unrecognized command")

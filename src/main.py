@@ -61,6 +61,8 @@ def init() -> None:
     TABLES = tables
 
 def execute_command(command):
+    global TABLES
+    init()
     spl = command.split(" ")
     if spl[0] == "create":
         table_n = spl[1]

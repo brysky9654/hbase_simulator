@@ -28,6 +28,24 @@ def list_tables():
     for table in tables:
         print(table)
 
+def create_table(table_name: str, columns: list[str], printdata:bool) -> None:
+    global TABLES
+    table = Table(name=table_name, column_families={column: {"version": "1"} for column in columns})
+
+    if printdata:
+        print(f"=> Hbase:: Table - {table_name}")
+
+    table.write_to_memory()
+
+    TABLES.append(table)
+    
+def valid_string(s: str) -> bool:
+    # si la cadena está limitada por comillas simples
+    if s[0] == "'" and s[-1] == "'":
+        return True
+    
+    return False
+
 def init() -> None:
     global TABLES
 

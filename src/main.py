@@ -60,18 +60,6 @@ def init() -> None:
 
     TABLES = tables
 
-def valid_string(s):
-    return True
-
-def create_table(table_n, columns, flag):
-    global TABLES
-    table = Table(table_n)
-    table.column_families = {col: '1' for col in columns}
-    TABLES.append(table)
-
-def list_tables():
-    return [table.name for table in TABLES]
-
 def execute_command(command):
     spl = command.split(" ")
     if spl[0] == "create":

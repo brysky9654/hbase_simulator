@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from typing import Union
 import os
 import json
 import time
@@ -142,7 +143,7 @@ class HFile(BaseModel):
         with open(f"{path}/hfile.json", "w") as f:
             json.dump(self.rows, f)
 
-    def put(self, row: int, column_family: str, column_qualifier: str, value: str):
+    def put(self, row: int, column_family: str, column_qualifier: str, value: Union[str, int, float]):
         """
         Inserta un valor en la tabla
         :param row: Identificador de la fila

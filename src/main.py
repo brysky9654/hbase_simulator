@@ -3,7 +3,6 @@ import shutil
 import json
 import os
 import re
-import pandas as pd
 import time as t
 
 TABLES = []
@@ -269,11 +268,20 @@ def main():
                     continue
 
                 if not valid_string(value):
-                    try:
+                    if value.find(".") != -1:
+                        try:
+                            value = float(value)
+                        except:
+                            value = value.replace("'", "")
+
+                    elif value.isdigit():
                         value = int(value)
-                    except:
-                        print("Invalid value")
-                        continue
+
+                    else:
+                        value = value.replace("'", "")
+                else:
+                    value = value.replace("'", "")
+
 
                 column_family = column.split(":")[0]
                 column_q = column.split(":")[1]
@@ -283,7 +291,6 @@ def main():
                 row_id = row_id.replace("'", "")
                 column_family = column_family.replace("'", "")
                 column_q = column_q.replace("'", "")
-                value = value.replace("'", "")
 
                 table = next((table for table in TABLES if table.name == table_name), None)
 
@@ -529,6 +536,67 @@ def main():
                 table.drop() #drop table
                 print("- Truncating table...")
                 create_table(tableName, fams, False) #create table
+
+            case "insert_many":
+                """
+                insert_many ‘table name’  {’row ’,'colfamily:colname',’new value’} {’row ’,'colfamily:colname',’new value’} {’row ’,'colfamily:colname',’new value’}...{’row ’,'colfamily:colname',’new value’}
+                """
+
+                tableName = spl[1]
+                
+                inserts = spl[2:]  # ["{row', 'colfamily:colname', 'new', 'value}", "{row', 'colfamily:colname', 'new', 'value}"]
+                
+                for ins in inserts:
+                    # Verificar que el insert sea válido
+                    if not ins.startswith("{") or not ins.endswith("}"):
+                        print("Invalid insert, missing '{' or '}'. Insert Many does not support spaces inside values.")
+                        continue
+
+                if not valid_string(tableName):
+                    print("Invalid table name")
+                    continue
+
+                tableName = tableName.replace("'", "")
+                table = next((table for table in TABLES if table.name == tableName), None)
+
+                if not table:
+                    print(f"{tableName} table not found")
+                    continue
+
+                hf = HFile(table=table.name)
+
+                for insert in inserts:
+                    row_id = insert.split(",")[0].replace("{", "").replace("'", "")
+                    column = insert.split(",")[1].replace("'", "")
+
+                    value = insert.split(",")[2].replace("}", "")
+
+                    if value.isdigit():
+                        value = int(value)
+                    elif value.find(".") != -1:
+                        try:
+                            value = float(value)
+                        except:
+                            value = value
+                    else:
+                        if valid_string(value):
+                            value = value.replace("'", "")
+                        else:
+                            print("Invalid value")
+                            continue
+
+
+
+                    column_family = column.split(":")[0]
+                    column_q = column.split(":")[1]
+
+                    hf.put(row_id, column_family, column_q, value)
+
+                del hf
+
+            case "update_many":
+                # update_many "employees" '{"row1": {"column1": "new_value1", "column2": "new_value2"}, "row2": {"column1": "new_value3"}}'
+                pass    
             
             case _:
                 print("Unrecognized command")

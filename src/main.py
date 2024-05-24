@@ -6,67 +6,41 @@ import json
 import tkinter as tk
 from tkinter import ttk
 
-# Placeholder classes and functions for demonstration
-class Table:
-    def __init__(self, name):
-        self.name = name
-        self.enabled = True
-        self.column_families = {}
+from models.table import *
 
-    def disable(self):
-        self.enabled = False
+TABLES = []
 
-    def enable(self):
-        self.enabled = True
+def load_table(table_name: str) -> Table:
+    # from a json like this {"enabled": true, "name": "tabla", "column_families": {"c1": {"version": "1"}, "c2": {"version": "1"}}}
 
-    def alter(self, column_family, version):
-        self.column_families[column_family] = version
+    json_path = f"tables/{table_name}/config.json"
 
-    def drop(self):
-        global TABLES
-        TABLES = [table for table in TABLES if table.name != self.name]
+    with open(json_path, "r") as f:
+        data = json.load(f)
+        table = Table(name=data['name'], column_families=data['column_families'])
+        table.enabled = data['enabled']
+        
+    return table
 
-    def describe(self):
-        return f"Table: {self.name}, Column Families: {self.column_families}"
+def list_tables():
+    tables = os.listdir("tables")
 
-class HFile:
-    def __init__(self, table):
-        self.table = table
-        self.rows = {}
+    for table in tables:
+        print(table)
 
-    def put(self, row, column_family, column_q, value):
-        if row not in self.rows:
-            self.rows[row] = {}
-        if column_family not in self.rows[row]:
-            self.rows[row][column_family] = {}
-        if column_q not in self.rows[row][column_family]:
-            self.rows[row][column_family][column_q] = {}
-        self.rows[row][column_family][column_q][t.time()] = value
-
-    def get(self, row):
-        return self.rows.get(row, {})
-
-    def scan(self):
-        return self.rows
-
-    def delete(self, row, column_family, column_q, timestamp):
-        if row in self.rows and column_family in self.rows[row] and column_q in self.rows[row][column_family]:
-            del self.rows[row][column_family][column_q][timestamp]
-
-    def delete_all(self, row):
-        if row in self.rows:
-            del self.rows[row]
-
-# Initialize global TABLES list
-def init():
+def init() -> None:
     global TABLES
-    TABLES = [
-        Table("employees"),
-        Table("hola"),
-        Table("people"),
-        Table("prueba"),
-        Table("solar")
-    ]
+
+    if not os.path.exists("tables"):
+        os.makedirs("tables")
+
+    table_names = os.listdir("tables")
+    tables = []
+
+    for table in table_names:
+        tables.append(load_table(table))
+
+    TABLES = tables
 
 def valid_string(s):
     return True

@@ -73,9 +73,26 @@ class Table(BaseModel):
     
     def alter(self, column_family: str, version: str):
         """
-        Alterar la tabla para cambiar la versión de un column family
+        Parte de las funcionalidades del comando 'ALTER TABLE' de HBase.
+        Alterar la tabla para cambiar la versión de un column family.
         """
         self.column_families[column_family]['version'] = version
+        self.write_to_memory()
+
+    def drop_column_family(self, column_family: str):
+        """
+        Parte de las funcionalidades del comando 'ALTER TABLE' de HBase.
+        Eliminar un column family de la tabla.
+        """
+        del self.column_families[column_family]
+        self.write_to_memory()
+
+    def add_column_family(self, column_family: str, version: str):
+        """
+        Agregar un column family a la tabla
+        """
+        self.column_families[column_family] = {'version': version}
+        self.write_to_memory()
 
     def drop(self):
         """
@@ -90,6 +107,7 @@ class HFile(BaseModel):
     table: str
     region: str = "region1"
     rows: dict[int, dict[str, dict[str, dict[str, str]]]] = {}
+    versions: int = 1
 
     """
     rows = 
@@ -109,7 +127,7 @@ class HFile(BaseModel):
     }
     """
 
-    def __init__(self, table: str, region: str = "region1"):
+    def __init__(self, table: str, region: str = "region1", versions: int = 1):
         """
         Inicializa la clase
         :param table: Nombre de la tabla
@@ -119,10 +137,11 @@ class HFile(BaseModel):
 
         self.table = table
         self.region = region
+        self.versions = versions
         
         path = f"tables/{self.table}/regions/{self.region}"
 
-        # check if hfile.json exists
+        # Verificar si existe el archivo hfile.json
         if os.path.exists(f"{path}/hfile.json"):
             print("hfile.json exists")
             with open(f"{path}/hfile.json", "r") as f:
@@ -151,6 +170,7 @@ class HFile(BaseModel):
         :param column_qualifier: Nombre de la columna
         :param value: Valor a insertar
         """
+
         ts = str(int(time.time()))
         if row not in self.rows:
             self.rows[row] = {}
@@ -159,6 +179,13 @@ class HFile(BaseModel):
         if column_qualifier not in self.rows[row][column_family]:
             self.rows[row][column_family][column_qualifier] = {}
         self.rows[row][column_family][column_qualifier][ts] = value
+
+        # Verificar si se excede el número de versiones
+        if len(self.rows[row][column_family][column_qualifier]) > self.versions:
+            # delete the oldest version
+            ts_to_delete = min(self.rows[row][column_family][column_qualifier])
+            del self.rows[row][column_family][column_qualifier][ts_to_delete]
+
         self.write_to_memory()
 
     def get(self, row: int) -> dict[str, dict[str, dict[str, str]]]:
@@ -201,4 +228,17 @@ class HFile(BaseModel):
         Elimina todas las filas de la tabla
         """
         self.rows = {}
+        self.write_to_memory()
+
+    def update_changes(self, table: Table):
+        """
+        Actualiza los cambios de la tabla
+        """
+
+        # Si en el hfile hay column families que no están en la tabla, eliminarlas
+        for row in self.rows:
+            for column_family in self.rows[row]:
+                if column_family not in table.column_families:
+                    del self.rows[row][column_family]
+
         self.write_to_memory()

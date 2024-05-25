@@ -93,6 +93,60 @@ def execute_command(command: str) -> str:
                 del hf
                 return "\n".join(result)
             
+            case "disable":
+                table_name = spl[1]
+                if not valid_string(table_name):
+                    return "Invalid table name"
+                table_name = table_name.replace("'", "")
+                table = next((table for table in TABLES if table.name == table_name), None)
+                if not table:
+                    return f"{table_name} table not found"
+                table.disable()
+                return f"Table {table_name} disabled"
+
+            case "enable":
+                table_name = spl[1]
+                if not valid_string(table_name):
+                    return "Invalid table name"
+                table_name = table_name.replace("'", "")
+                table = next((table for table in TABLES if table.name == table_name), None)
+                if not table:
+                    return f"{table_name} table not found"
+                table.enable()
+                return f"Table {table_name} enabled"
+
+            case "is_disabled":
+                table_name = spl[1]
+                if not valid_string(table_name):
+                    return "Invalid table name"
+                table_name = table_name.replace("'", "")
+                table = next((table for table in TABLES if table.name == table_name), None)
+                if not table:
+                    return f"{table_name} table not found"
+                return str(not table.enabled)
+            
+            case "alter":
+                table_name = spl[1]
+                column_family = spl[2]
+                version = spl[3]
+                if not valid_string(table_name):
+                    return "Invalid table name"
+                if not valid_string(column_family):
+                    return "Invalid column family name"
+                if not valid_string(version):
+                    return "Invalid version"
+                table_name = table_name.replace("'", "")
+                column_family = column_family.replace("'", "")
+                version = version.replace("'", "")
+                table = next((table for table in TABLES if table.name == table_name), None)
+                if not table:
+                    return f"{table_name} table not found"
+                if table.enabled:
+                    return f"ERROR: Table {table_name} is enabled. Disable it first."
+                table.alter(column_family, version)
+                table.write_to_memory()
+                return f"Table {table_name} altered with column family {column_family} and version {version}"
+            
             case _:
                 return "Unrecognized command"
     except Exception as e:

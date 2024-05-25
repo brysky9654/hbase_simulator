@@ -1,1 +1,1 @@
-{"enabled": true, "name": "employees", "column_families": {"col1": {"version": "1"}, "col2": {"version": "1"}}}
+{"enabled": false, "name": "employees", "column_families": {"col2": {"version": "1"}, "c4": {"version": "4"}}}

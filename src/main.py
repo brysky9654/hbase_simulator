@@ -61,7 +61,7 @@ def execute_command(command: str) -> str:
     try:
         match spl[0]:
             case "create":
-                # create 'table name', 'column family', 'column family', ...
+                # create 'table name' 'column family' 'column family' ...
                 table_n = spl[1]
                 columns = spl[2:]
                 if not valid_string(table_n):
@@ -253,7 +253,7 @@ def execute_command(command: str) -> str:
                     return "Invalid alter command. 'alter' command can add a column family, delete a column family or alter a column family version."
             
             case "drop":
-                # drop ’<table name>’
+                # drop '<table name>'
                 table_name = spl[1]
                 
                 if not valid_string(table_name):
@@ -267,13 +267,13 @@ def execute_command(command: str) -> str:
                 table = next((table for table in TABLES if table.name == table_name), None)
                 
                 if table.enabled:
-                    print(f"ERROR: Table {table_name} is enabled. Disable it first.")
+                    return f"ERROR: Table {table_name} is enabled. Disable it first."
                 else:
                     table.drop()
                     return f"{table_name} table dropped"
             
             case "drop_all":
-                # drop_all ’<regex>’
+                # drop_all '<regex>'
                 regex = spl[1]
                 if not valid_string(regex):
                     return "Invalid regex"
@@ -282,23 +282,24 @@ def execute_command(command: str) -> str:
 
                 pattern = re.compile(regex)
 
-                table_names = os.listdir("tables")
+                table_names = [table.name for table in TABLES]
 
                 message = ""
+
                 for table_name in table_names:
                     if pattern.match(table_name):
-                        table_path = os.path.join("tables", table_name)
-                        if os.path.isdir(table_path): 
-                            shutil.rmtree(table_path)
-                            message += f"{table_name} table(s) dropped\n"
+                        table = next((table for table in TABLES if table.name == table_name), None)
+                        
+                        if table.enabled:
+                            message += f"ERROR: Table {table_name} is enabled. Disable it first.\n"
                         else:
-                            os.remove(table_path)
+                            table.drop()
                             message += f"{table_name} table(s) dropped\n"
 
                 return message
 
             case "describe":
-                # describe ’<table name>’
+                # describe '<table name>'
                 table_name = spl[1]
 
                 if not valid_string(table_name):    
@@ -315,7 +316,7 @@ def execute_command(command: str) -> str:
             
             # --- DML Functions ---
             case "put":
-                # put ‘table name’, ’row ’, 'colfamily:colname', ’new value’
+                # put 'table name' 'row' 'colfamily:colname' 'new value'
                 table_name = spl[1]
                 row_id = spl[2]
                 column = spl[3]
@@ -364,7 +365,7 @@ def execute_command(command: str) -> str:
                     return f"{table_name} table not found"
                     
 
-                hf = HFile(table=table.name)
+                hf = HFile(table=table.name, versions=table.column_families[column_family]["version"])
 
                 if not table.enabled:
                     return f"ERROR: Table {table_name} is disabled. Enable it first."
@@ -376,7 +377,7 @@ def execute_command(command: str) -> str:
                 return f"Row {row_id} inserted in table {table_name}.\n"
 
             case "get":
-                # get ’<table name>’, ’row id’
+                # get '<table name>' 'row id'
                 """
                 COLUMN                        CELL
                 details:name                  timestamp=123456789, value=John
@@ -402,7 +403,7 @@ def execute_command(command: str) -> str:
                     personal_data:pet                   timestamp=123456789, value=dog
                     """
                     #spl ['get', 'tabla4', '1', '{COLUMN', '=>', 'fam:cq}']
-                    # get ’<table name>’, ’row id’, {COLUMN => 'cfamily:columnq'}
+                    # get '<table name>' 'row id' {COLUMN => 'cfamily:columnq'}
 
                     if spl[3] == "{COLUMN":
                         if not valid_string(spl[5][:-1]):
@@ -417,7 +418,7 @@ def execute_command(command: str) -> str:
                         return "Invalid command"
 
                 else:
-                    # get '<table name>', 'row id'
+                    # get '<table name>' 'row id'
                     column_f = None
                     column_q = None
 
@@ -461,7 +462,7 @@ def execute_command(command: str) -> str:
                 return string
                 
             case "delete":
-                # delete '<table name>', 'row id', 'column family:column qualifier', timestamp
+                # delete '<table name>' 'row id' 'column family:column qualifier' timestamp
 
                 if len(spl) < 5:
                     return "Invalid command. Usage: delete '<table name>', 'row id', 'column family:column qualifier', timestamp"
@@ -508,12 +509,15 @@ def execute_command(command: str) -> str:
                     else:
                         del hf
                         return f"Timestamp not found. {timestamp} does not exist in row {rowId}, column {columnFamily}:{columnQualifier}.\n"
+                else:
+                    del hf
+                    return f"Row {rowId} not found in table {tableName}.\n"
                 
                 del hf
                 return f"Row {rowId} deleted from table {tableName}.\n"
             
             case "delete_all":
-                # delete_all ’<table name>’, ’row id’
+                # delete_all '<table name>' 'row id'
                 tableName = spl[1]
                 rowId = spl[2]
 
@@ -594,10 +598,11 @@ def execute_command(command: str) -> str:
                 """
                 insert_many ‘table name’  {’row ’,'colfamily:colname',’new value’} {’row ’,'colfamily:colname',’new value’} {’row ’,'colfamily:colname',’new value’}...{’row ’,'colfamily:colname',’new value’}
                 """
+                #insert_many 'urls' {'1','name:uri','koji.com'} {'1','name:uri','pro.com'}
 
                 tableName = spl[1]
                 
-                inserts = spl[2:]  # ["{row', 'colfamily:colname', 'new', 'value}", "{row', 'colfamily:colname', 'new', 'value}"]
+                inserts = spl[2:]  # ["{row' 'colfamily:colname' 'new' 'value}", "{row' 'colfamily:colname' 'new' 'value}"]
                 
                 for ins in inserts:
                     # Verificar que el insert sea válido
@@ -615,39 +620,46 @@ def execute_command(command: str) -> str:
                 if not table:
                     return f"{tableName} table not found"
                     
-
-                hf = HFile(table=table.name)
+                message = ""
 
                 for insert in inserts:
                     row_id = insert.split(",")[0].replace("{", "").replace("'", "")
                     column = insert.split(",")[1].replace("'", "")
 
+                    
                     value = insert.split(",")[2].replace("}", "")
 
-                    if value.isdigit():
-                        value = int(value)
-                    elif value.find(".") != -1:
-                        try:
-                            value = float(value)
-                        except:
-                            value = value
+
+                    if valid_string(value):
+                        value = value.replace("'", "")
                     else:
-                        if valid_string(value):
-                            value = value.replace("'", "")
+                        if value.isdigit():
+                            value = int(value)
+                        elif value.find(".") != -1:
+                            try:
+                                value = float(value)
+                            except:
+                                message += f"Invalid value: {value}\n"
+                                continue
                         else:
-                            return "Invalid value"
+                            message += f"Invalid value: {value}\n"
+                            continue
                             
+                    #insert_many 'urls' {'1','name:uri','kojimena.com'} {'1','name:uri','proinmo.com'}
+
 
                     column_family = column.split(":")[0]
                     column_q = column.split(":")[1]
+                    print(row_id, column_family, column_q, value)
 
+                    hf = HFile(table=table.name, versions=table.column_families[column_family]["version"])
                     hf.put(row_id, column_family, column_q, value)
 
                 del hf
                 return f"Rows inserted in table {tableName}.\n"
 
             case "update_many":
-                # update_many 'table name' 'cf:cq' value '1'  '2'  '3'
+                # update_many 'table_name' 'cf:cq' value '1'  '2'  '3'
                 tableName = spl[1]
                 column = spl[2]
                 value = spl[3]
@@ -706,7 +718,7 @@ def execute_command(command: str) -> str:
     
 def main():
     while True:
-        command = input("habase(main)> ")
+        command = input("hbase(main)> ")
         if command == "exit":
             break
         print(execute_command(command))
@@ -716,7 +728,7 @@ def run_gui():
         command = command_entry.get()
         output = execute_command(command)
         result_text.config(state=tk.NORMAL)
-        result_text.insert(tk.END, f"habase(main)> {command}\n{output}\n")
+        result_text.insert(tk.END, f"hbase(main)> {command}\n{output}\n")
         result_text.config(state=tk.DISABLED)
         command_entry.delete(0, tk.END)
 

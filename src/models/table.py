@@ -98,7 +98,9 @@ class Table(BaseModel):
         """
         Hace un drop de la tabla
         """
-        shutil.rmtree(f"tables/{self.name}")
+
+        if os.path.exists(f"tables/{self.name}"):
+            shutil.rmtree(f"tables/{self.name}")
 
 class HFile(BaseModel):
     """
@@ -137,7 +139,7 @@ class HFile(BaseModel):
 
         self.table = table
         self.region = region
-        self.versions = versions
+        self.versions = int(versions)
         
         path = f"tables/{self.table}/regions/{self.region}"
 
@@ -172,6 +174,8 @@ class HFile(BaseModel):
         """
 
         ts = str(int(time.time()))
+        time.sleep(1)
+
         if row not in self.rows:
             self.rows[row] = {}
         if column_family not in self.rows[row]:
@@ -184,6 +188,7 @@ class HFile(BaseModel):
         if len(self.rows[row][column_family][column_qualifier]) > self.versions:
             # delete the oldest version
             ts_to_delete = min(self.rows[row][column_family][column_qualifier])
+            print(f"Deleting {ts_to_delete}")
             del self.rows[row][column_family][column_qualifier][ts_to_delete]
 
         self.write_to_memory()
@@ -236,9 +241,13 @@ class HFile(BaseModel):
         """
 
         # Si en el hfile hay column families que no están en la tabla, eliminarlas
+        rows_to_delete = []
         for row in self.rows:
             for column_family in self.rows[row]:
                 if column_family not in table.column_families:
-                    del self.rows[row][column_family]
+                    rows_to_delete.append(row)
+
+        for row in rows_to_delete:
+            del self.rows[row]
 
         self.write_to_memory()

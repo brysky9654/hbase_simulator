@@ -174,7 +174,6 @@ class HFile(BaseModel):
         """
 
         ts = str(int(time.time()))
-        time.sleep(1)
 
         if row not in self.rows:
             self.rows[row] = {}

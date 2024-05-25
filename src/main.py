@@ -750,8 +750,20 @@ def run_gui():
     submit_button = ttk.Button(main_frame, text="Submit", command=on_submit)
     submit_button.grid(row=0, column=2, sticky=tk.W)
 
-    result_text = tk.Text(main_frame, width=100, height=20, state=tk.DISABLED)
-    result_text.grid(row=1, column=0, columnspan=3, sticky=(tk.W, tk.E, tk.N, tk.S))
+    result_text = tk.Text(main_frame, width=200, height=100, state=tk.DISABLED)
+    result_text.grid(row=1, column=0, columnspan=3, sticky=(tk.N, tk.S, tk.E, tk.W))
+
+    # Configurar el peso de la fila y la columna
+    main_frame.grid_rowconfigure(1, weight=1)
+    main_frame.grid_columnconfigure(0, weight=1)
+
+    # Crear la barra de desplazamiento
+    scrollbar = ttk.Scrollbar(main_frame, command=result_text.yview)
+    scrollbar.grid(row=1, column=3, sticky=(tk.N, tk.S))
+
+    # Conectar la barra de desplazamiento con la caja de texto
+    result_text['yscrollcommand'] = scrollbar.set
+
 
     root.mainloop()
 

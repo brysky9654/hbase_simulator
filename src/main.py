@@ -715,6 +715,7 @@ def execute_command(command: str) -> str:
                 
     except Exception as e:
         return f"Error: {str(e)}"
+
     
 def main():
     while True:
@@ -753,16 +754,24 @@ def run_gui():
     result_text = tk.Text(main_frame, width=200, height=100, state=tk.DISABLED)
     result_text.grid(row=1, column=0, columnspan=3, sticky=(tk.N, tk.S, tk.E, tk.W))
 
-    # Configurar el peso de la fila y la columna
-    main_frame.grid_rowconfigure(1, weight=1)
-    main_frame.grid_columnconfigure(0, weight=1)
-
     # Crear la barra de desplazamiento
     scrollbar = ttk.Scrollbar(main_frame, command=result_text.yview)
     scrollbar.grid(row=1, column=3, sticky=(tk.N, tk.S))
 
     # Conectar la barra de desplazamiento con la caja de texto
     result_text['yscrollcommand'] = scrollbar.set
+
+    def reset():
+        # Limpiar el campo de entrada
+        command_entry.delete(0, tk.END)
+        # Limpiar la caja de texto
+        result_text.config(state=tk.NORMAL)
+        result_text.delete(1.0, tk.END)
+        result_text.config(state=tk.DISABLED)
+
+    # Crear el botón de reset
+    reset_button = ttk.Button(main_frame, text="Reset", command=reset)
+    reset_button.grid(row=0, column=3, sticky=tk.W)
 
 
     root.mainloop()

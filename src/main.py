@@ -77,10 +77,7 @@ def execute_command(command):
         return f"Table {table_n} created with columns {', '.join(columns)}"
 
     elif spl[0] == "list":
-        tables = list_tables()
-        if tables:
-            return "\n".join(tables)
-        return "No tables found"
+        list_tables()
 
     elif spl[0] == "disable":
         table_name = spl[1]

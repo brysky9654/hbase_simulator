@@ -1,0 +1,1 @@
+{"enabled": true, "name": "access_table", "column_families": {"Usuarios": {"version": "3"}, "Fechas": {"version": "3"}, "Dispositivos": {"version": "3"}}}

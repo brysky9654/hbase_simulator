@@ -1,0 +1,1 @@
+{"enabled": true, "name": "employee_table", "column_families": {"PersonalInfo": {"version": "3"}, "JobInfo": {"version": "3"}}}

@@ -62,6 +62,7 @@ def execute_command(command: str) -> str:
         match spl[0]:
             case "create":
                 # create 'table name' 'column family' 'column family' ...
+                # create 'students' 'personalInfo' 'contactInfo' 'grades'
                 table_n = spl[1]
                 columns = spl[2:]
                 if not valid_string(table_n):
@@ -79,6 +80,7 @@ def execute_command(command: str) -> str:
             
             case "scan":
                 # scan 'table name'
+                # scan 'students'
                 table_name = spl[1]
                 
                 if not valid_string(table_name):
@@ -115,6 +117,7 @@ def execute_command(command: str) -> str:
             
             case "disable":
                 # disable 'table name'
+                # disable 'students'
                 table_name = spl[1]
                 if not valid_string(table_name):
                     return "Invalid table name"
@@ -127,6 +130,7 @@ def execute_command(command: str) -> str:
 
             case "enable":
                 # enable 'table name'
+                # enable 'students'
                 table_name = spl[1]
                 if not valid_string(table_name):
                     return "Invalid table name"
@@ -140,6 +144,7 @@ def execute_command(command: str) -> str:
 
             case "is_disabled":
                 # is_disabled 'table name'
+                # is_disabled 'students'
                 table_name = spl[1]
                 if not valid_string(table_name):
                     return "Invalid table name"
@@ -153,6 +158,10 @@ def execute_command(command: str) -> str:
                 # > alter 'table name' 'column family' 'version'
                 # > alter 'table name' 'delete' 'column family'
                 # > alter 'table name' 'add' 'column family' 'version'
+
+                # alter 'students' 'personalInfo' '2'
+                # alter 'students' 'delete' 'grades'
+                # alter 'students' 'add' 'personalInfo' '1'
                 
                 if len(spl) == 4 and spl[2] != "'delete'":
                     # Alter: Modificar las versiones de un column family
@@ -254,6 +263,7 @@ def execute_command(command: str) -> str:
             
             case "drop":
                 # drop '<table name>'
+                # drop 'students'
                 table_name = spl[1]
                 
                 if not valid_string(table_name):
@@ -300,6 +310,7 @@ def execute_command(command: str) -> str:
 
             case "describe":
                 # describe '<table name>'
+                # describe 'students'
                 table_name = spl[1]
 
                 if not valid_string(table_name):    
@@ -317,6 +328,7 @@ def execute_command(command: str) -> str:
             # --- DML Functions ---
             case "put":
                 # put 'table name' 'row' 'colfamily:colname' 'new value'
+                # put 'students' '1' 'personalInfo:name' 'John'
                 table_name = spl[1]
                 row_id = spl[2]
                 column = spl[3]
@@ -378,6 +390,7 @@ def execute_command(command: str) -> str:
 
             case "get":
                 # get '<table name>' 'row id'
+                # get 'students' '1'
                 """
                 COLUMN                        CELL
                 details:name                  timestamp=123456789, value=John
@@ -404,6 +417,7 @@ def execute_command(command: str) -> str:
                     """
                     #spl ['get', 'tabla4', '1', '{COLUMN', '=>', 'fam:cq}']
                     # get '<table name>' 'row id' {COLUMN => 'cfamily:columnq'}
+                    # get 'students' '1' {COLUMN => 'personalInfo:name'}
 
                     if spl[3] == "{COLUMN":
                         if not valid_string(spl[5][:-1]):
@@ -419,6 +433,7 @@ def execute_command(command: str) -> str:
 
                 else:
                     # get '<table name>' 'row id'
+                    # get 'students' '1'
                     column_f = None
                     column_q = None
 
@@ -463,6 +478,7 @@ def execute_command(command: str) -> str:
                 
             case "delete":
                 # delete '<table name>' 'row id' 'column family:column qualifier' timestamp
+                # delete 'students' '1' 'personalInfo:name' timestamp
 
                 if len(spl) < 5:
                     return "Invalid command. Usage: delete '<table name>', 'row id', 'column family:column qualifier', timestamp"
@@ -518,6 +534,7 @@ def execute_command(command: str) -> str:
             
             case "delete_all":
                 # delete_all '<table name>' 'row id'
+                # delete_all 'students' '1'
                 tableName = spl[1]
                 rowId = spl[2]
 
@@ -547,6 +564,7 @@ def execute_command(command: str) -> str:
             
             case "count":
                 # count '<table name>'
+                # count 'students'
                 tableName = spl[1]
 
                 if not valid_string(tableName):
@@ -573,6 +591,7 @@ def execute_command(command: str) -> str:
             
             case "truncate":
                 # truncate '<table name>'
+                # truncate 'students'
                 tableName = spl[1]
                 string = ""
 
@@ -599,6 +618,7 @@ def execute_command(command: str) -> str:
                 insert_many ‘table name’  {’row ’,'colfamily:colname',’new value’} {’row ’,'colfamily:colname',’new value’} {’row ’,'colfamily:colname',’new value’}...{’row ’,'colfamily:colname',’new value’}
                 """
                 #insert_many 'urls' {'1','name:uri','koji.com'} {'1','name:uri','pro.com'}
+                #insert_many 'students' {'1','personalInfo:name','John'} {'1','personalInfo:age',30} {'1','contactInfo:email','jhon@gmail.com'}
 
                 tableName = spl[1]
                 
@@ -646,6 +666,7 @@ def execute_command(command: str) -> str:
                             continue
                             
                     #insert_many 'urls' {'1','name:uri','kojimena.com'} {'1','name:uri','proinmo.com'}
+                    #insert_many 'students' {'1','personalInfo:name','John'} {'1','personalInfo:age', 30}
 
 
                     column_family = column.split(":")[0]
@@ -660,6 +681,7 @@ def execute_command(command: str) -> str:
 
             case "update_many":
                 # update_many 'table_name' 'cf:cq' value '1'  '2'  '3'
+                # update_many 'students' 'personalInfo:name' 'John' 1 2 3
                 tableName = spl[1]
                 column = spl[2]
                 value = spl[3]
